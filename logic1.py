@@ -4,7 +4,6 @@ from flask_cors import CORS
 from werkzeug.exceptions import BadRequest
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
-import streamlit as st
 
 app = Flask(__name__)
 CORS(app)
