@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Recommendation</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <style>
+        select {
+            width: 500px;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px;
+        }
+    </style>
+    <script>
+        function populateDropdown(endpoint, dropdownId, callback) {
+            console.log("Populating dropdown:", endpoint);
+
+            $.ajax({
+                type: "POST",
+                url: endpoint,
+                contentType: "application/json",
+                success: function (response) {
+                    var dropdown = $("#" + dropdownId);
+                    dropdown.empty();
+
+                    // Check if the response contains the expected property
+                    if (response && response.user_ids) {
+                        // Populate the dropdown with the received data
+                        response.user_ids.forEach(function (item) {
+                            dropdown.append($("<option />").val(item).text(item));
+                        });
+
+                        // Call the callback function if provided
+                        if (typeof callback === "function") {
+                            callback();
+                        }
+                    } else {
+                        console.error("Invalid response format:", response);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error in AJAX request:", status, error);
+
+                    // Log the response text for further analysis
+                    console.log("Response Text:", xhr.responseText);
+                }
+            });
+        }
+
+        function getTopUnheardSongs() {
+            var userId = $("#userDropdown").val();
+
+            // Check if user ID is available
+            if (!userId) {
+                console.error("User ID parameter is missing");
+                return;
+            }
+
+            // Make an AJAX request to the server to get top unheard songs
+            $.ajax({
+                type: "POST",
+                url: "/get_top_unheard_songs",
+                contentType: "application/json",
+                data: JSON.stringify({ "user_id": userId }),
+                success: function (response) {
+                    console.log(response);  // Log the response for debugging
+
+                    // Display the top unheard songs
+                    var topUnheardSongsText = "Top Unheard Songs:<br>";
+
+                    if (response.top_unheard_songs.length > 0) {
+                        response.top_unheard_songs.forEach(function (song) {
+                            topUnheardSongsText += "Song ID: " + song + "<br>";
+                        });
+                    } else {
+                        topUnheardSongsText += "No top unheard songs found.";
+                    }
+
+                    $("#unheardSongs").html(topUnheardSongsText);
+                },
+                error: function (error) {
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            // Populate user dropdown on page load
+            populateDropdown("/get_user_ids", "userDropdown", function () {
+                // Set up event listener for user dropdown change
+                $("#userDropdown").change(function () {
+                    // Uncomment the line below to get top unheard songs on user selection
+                    getTopUnheardSongs();
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Song Recommendation</h1>
+
+    <!-- User Dropdown -->
+    <label for="userDropdown">Select User ID:</label>
+    <select id="userDropdown">
+        <!-- User IDs will be dynamically populated here -->
+    </select>
+    <br>
+
+    <!-- Button to Get Top Unheard Songs -->
+    <button onclick="getTopUnheardSongs()">Get Top Unheard Songs</button>
+
+    <!-- Display Top Unheard Songs -->
+    <p id="unheardSongs"></p>
+</body>
+
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Recommendation</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <style>
+        select {
+            width: 500px;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px;
+        }
+    </style>
+    <script>
+        function populateDropdown(endpoint, dropdownId, callback) {
+            console.log("Populating dropdown:", endpoint);
+
+            $.ajax({
+                type: "POST",
+                url: endpoint,
+                contentType: "application/json",
+                success: function (response) {
+                    var dropdown = $("#" + dropdownId);
+                    dropdown.empty();
+
+                    // Check if the response contains the expected property
+                    if (response && response.user_ids) {
+                        // Populate the dropdown with the received data
+                        response.user_ids.forEach(function (item) {
+                            dropdown.append($("<option />").val(item).text(item));
+                        });
+
+                        // Call the callback function if provided
+                        if (typeof callback === "function") {
+                            callback();
+                        }
+                    } else {
+                        console.error("Invalid response format:", response);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error in AJAX request:", status, error);
+
+                    // Log the response text for further analysis
+                    console.log("Response Text:", xhr.responseText);
+                }
+            });
+        }
+
+        function getUserSongsForDebugging(callback) {
+            var userId = $("#userDropdown").val();
+
+            if (!userId) {
+                console.error("User ID is missing or invalid.");
+                return;
+            }
+
+            console.log("Sending user ID to server:", userId);
+
+            // Make an AJAX request to the server to get the user songs
+            $.ajax({
+                type: "POST",
+                url: "/get_user_songs",
+                contentType: "application/json",
+                data: JSON.stringify({ "user_id": userId }),
+                success: function (response) {
+                    console.log("User Songs Response:", response);
+
+                    if (response.error) {
+                        console.error("Error in response:", response.error);
+                    } else {
+                        var songsDropdown = $("#songsDropdown");
+                        songsDropdown.empty();
+
+                        // Populate the songs dropdown with the received data
+                        response.listened_songs.forEach(function (item) {
+                            // Assuming item is an object with song_id and title properties
+                            songsDropdown.append($("<option />").val(item.song_id).text(item.title));
+                        });
+
+                        // Call the callback function if provided
+                        if (typeof callback === "function") {
+                            callback();
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error in AJAX request:", status, error);
+                    console.log("Response Text:", xhr.responseText);
+                }
+            });
+        }
+
+        function getRecommendation() {
+    var userId = $("#userDropdown").val();
+    var selectedSong = $("#songsDropdown").val();
+
+    // Check if both user ID and selected song are available
+    if (!userId || !selectedSong) {
+        console.error("User ID or selected song parameter is missing");
+        return;
+    }
+
+    // Make an AJAX request to the server to get the recommendation
+    $.ajax({
+        type: "POST",
+        url: "/get_recommendation",
+        contentType: "application/json",
+        data: JSON.stringify({ "user_id": userId, "selected_song": selectedSong }),
+        success: function (response) {
+            // Display the recommendation for JSON responses
+            var recommendationText = "Recommended Songs:<br>";
+
+            // Modify the logic to include a combination of same artist, top play count, and same release year recommendations
+            if (response.recommended_song.length > 0) {
+                // Create arrays to store recommendations based on different criteria
+                var sameArtistRecommendations = [];
+                var topPlayCountRecommendations = [];
+                var sameReleaseYearRecommendations = [];
+
+                response.recommended_song.forEach(function (song) {
+                    // Same Artist
+                    if (song.artist_name === response.artist_name && song.song_id !== selectedSong) {
+                        sameArtistRecommendations.push(song);
+                    }
+
+                    // Top Play Count
+                    topPlayCountRecommendations.push(song);
+
+                    // Same Release Year
+                    if (song.year === response.year && song.song_id !== selectedSong) {
+                        sameReleaseYearRecommendations.push(song);
+                    }
+                });
+
+                // Sort the top play count recommendations by play count in descending order
+                topPlayCountRecommendations.sort((a, b) => b.play_count - a.play_count);
+
+                // Combine the recommendations based on different criteria
+                var combinedRecommendations = sameArtistRecommendations.concat(topPlayCountRecommendations, sameReleaseYearRecommendations);
+
+                // Remove duplicates from the combined recommendations
+                var uniqueRecommendations = [...new Map(combinedRecommendations.map(item => [item.song_id, item])).values()];
+
+                // Display the recommendations
+                uniqueRecommendations.forEach(function (song) {
+                    recommendationText += "Song ID: " + song.song_id + ", Title: " + song.title + "<br>";
+                });
+            } else {
+                recommendationText += "No recommendations found.";
+            }
+
+            $("#recommendation").html(recommendationText);
+        },
+        error: function (error) {
+            console.error("Error:", error);
+        }
+    });
+}
+
+
+        $(document).ready(function () {
+            // Populate user dropdown on page load
+            populateDropdown("/get_user_ids", "userDropdown", function () {
+                // Populate songs dropdown based on selected user
+                getUserSongsForDebugging();
+            });
+
+            // Set up event listener for user dropdown change
+            $("#userDropdown").change(function () {
+                // Populate songs dropdown based on selected user
+                getUserSongsForDebugging();
+            });
+
+            // Set up event listener for songs dropdown change
+            $("#songsDropdown").change(function () {
+                // Uncomment the line below to populate recommendation on song selection
+                //getRecommendation();
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Song Recommendation</h1>
+
+    <!-- User Dropdown -->
+    <label for="userDropdown">Select User ID:</label>
+    <select id="userDropdown">
+        <!-- User IDs will be dynamically populated here -->
+    </select>
+    <br>
+
+    <!-- Songs Dropdown -->
+    <label for="songsDropdown">Select Listened Song:</label>
+    <select id="songsDropdown">
+        <!-- Songs will be dynamically populated here -->
+    </select>
+    <br>
+
+    <!-- Button to Get Recommendation -->
+    <button onclick="getRecommendation()">Get Recommendation</button>
+
+    <!-- Display Recommendation -->
+    <p id="recommendation"></p>
+</body>
+</html>
