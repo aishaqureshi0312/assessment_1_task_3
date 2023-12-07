@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Load the dataset
-df = pd.read_csv("/Users/aishaqureshi/Desktop/Test/song_dataset.csv")
+df = pd.read_csv("/Users/aishaqureshi/Desktop/Assessment_1_task_3/song_dataset.csv")
 
 # Create a user-song matrix
 user_song_matrix = df.pivot_table(index='user', columns='song', values='play_count', fill_value=0)
